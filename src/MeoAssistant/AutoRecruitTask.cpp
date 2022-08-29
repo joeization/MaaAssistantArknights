@@ -488,7 +488,10 @@ asst::AutoRecruitTask::calc_task_result_type asst::AutoRecruitTask::recruit_calc
             {
                 json::value cb_info = basic_info();
                 cb_info["what"] = "RecruitTagsRefreshed";
-                cb_info["details"] = json::object { { "count", refresh_count }, { "refresh_limit", refresh_limit } };
+                cb_info["details"] = json::object {
+                    { "count", refresh_count },
+                    { "refresh_limit", refresh_limit },
+                };
                 callback(AsstMsg::SubTaskExtraInfo, cb_info);
                 Log.trace("recruit tags refreshed", std::to_string(refresh_count), " times, rerunning recruit task");
             }
@@ -689,8 +692,11 @@ void asst::AutoRecruitTask::upload_to_penguin(const json::value& details)
     body["stageId"] = "recruit";
     auto& all_drops = body["drops"];
     for (const auto& tag : details.at("tags").as_array()) {
-        all_drops.array_emplace(
-            json::object { { "dropType", "NORMAL_DROP" }, { "itemId", tag.as_string() }, { "quantity", 1 } });
+        all_drops.array_emplace(json::object {
+            { "dropType", "NORMAL_DROP" },
+            { "itemId", tag.as_string() },
+            { "quantity", 1 },
+        });
     }
     body["source"] = "MeoAssistant";
     body["version"] = Version;
@@ -710,9 +716,20 @@ void asst::AutoRecruitTask::upload_to_penguin(const json::value& details)
     std::string cmd_line = utils::string_replace_all_batch(opt.penguin_report.cmd_format,
                                                            { { "[body]", body_escapes }, { "[extra]", extra_param } });
 
-    Log.trace("request_penguin |", cmd_line);
-
+    Log.info("request_penguin |", cmd_line);
     std::string response = utils::callcmd(cmd_line);
+
+    Log.info("response:\n", response);
+    cb_info["details"]["response"] = response;
+
+    static const std::regex http_ok_regex(R"(HTTP/.+ 200 OK)");
+    if (std::regex_search(response, http_ok_regex)) {
+        callback(AsstMsg::SubTaskCompleted, cb_info);
+    }
+    else {
+        cb_info["why"] = "上报失败";
+        callback(AsstMsg::SubTaskError, cb_info);
+    }
 
     static const std::regex penguinid_regex(R"(X-Penguin-Set-Penguinid: (\d+))");
     std::smatch penguinid_sm;
@@ -722,10 +739,6 @@ void asst::AutoRecruitTask::upload_to_penguin(const json::value& details)
         id_info["details"]["id"] = m_penguin_id;
         callback(AsstMsg::SubTaskExtraInfo, id_info);
     }
-
-    Log.trace("request_penguin | response:\n", response);
-
-    callback(AsstMsg::SubTaskCompleted, cb_info);
 }
 
 void asst::AutoRecruitTask::upload_to_yituliu(const json::value& details)
@@ -735,7 +748,7 @@ void asst::AutoRecruitTask::upload_to_yituliu(const json::value& details)
     auto& opt = Resrc.cfg().get_options();
 
     json::value cb_info = basic_info();
-    cb_info["subtask"] = "ReportToyituliu";
+    cb_info["subtask"] = "ReportToYituliu";
     callback(AsstMsg::SubTaskStart, cb_info);
 
     json::value body = details;
@@ -754,12 +767,19 @@ void asst::AutoRecruitTask::upload_to_yituliu(const json::value& details)
 
     std::string cmd_line = utils::string_replace_all_batch(opt.yituliu_report.cmd_format,
                                                            { { "[body]", body_escapes }, { "[extra]", "" } });
-
     Log.trace("request_yituliu |", cmd_line);
 
     std::string response = utils::callcmd(cmd_line);
-
     Log.trace("request_yituliu | response:\n", response);
 
-    callback(AsstMsg::SubTaskCompleted, cb_info);
+    cb_info["details"]["response"] = response;
+
+    static const std::regex http_ok_regex(R"(HTTP/.+ 200 OK)");
+    if (std::regex_search(response, http_ok_regex)) {
+        callback(AsstMsg::SubTaskCompleted, cb_info);
+    }
+    else {
+        cb_info["why"] = "上报失败";
+        callback(AsstMsg::SubTaskError, cb_info);
+    }
 }
