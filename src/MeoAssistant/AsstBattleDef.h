@@ -83,15 +83,17 @@ namespace asst
     enum class BattleRole
     {
         Unknown,
+        Drone,
+        // ranged
         Caster,
         Medic,
-        Pioneer,
         Sniper,
         Special,
         Support,
+        // melee
+        Pioneer,
         Tank,
         Warrior,
-        Drone
     };
 
     struct BattleRealTimeOper

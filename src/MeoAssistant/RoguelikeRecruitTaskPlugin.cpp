@@ -114,11 +114,16 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
                 // 干员已在编队中，又出现在招募列表，只有待晋升和预备干员两种情况
                 if (recruit_info.is_alternate) {
                     // 预备干员可以重复招募
-                    priority = recruit_info.recruit_priority;
+                    // 不招募预备干员
+                    // priority = recruit_info.recruit_priority;
                 }
                 else {
                     // 干员待晋升
-                    priority = recruit_info.promote_priority;
+                    // 有兩地面再晋升地面
+                    // 招募到沒在recruit_json裡的不會算到
+                    if (recruit_info.role >= BattleRole::Pioneer && melee_opers_cnt > 1) {
+                        priority = recruit_info.promote_priority;
+                    }
                 }
             }
             else {
@@ -127,12 +132,13 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
                     // TODO: 招募时已精二 (随机提升或对应分队) => promoted_priority
                     priority = recruit_info.recruit_priority;
                 }
-                else if (oper_info.elite == 1 && oper_info.level >= 50) {
-                    // 精一50级以上
+                else if (oper_info.elite == 1 && oper_info.level >= 30) {
+                    // 精一30级以上
+                    // 有些干員不常用到所以沒練高等
                     priority = recruit_info.recruit_priority;
                 }
                 else {
-                    // 精一50级以下，默认不招募
+                    // 精一30级以下，默认不招募
                     Log.trace(__FUNCTION__, "| Ignored low level oper:", oper_info.name, oper_info.elite,
                               oper_info.level);
                 }
@@ -204,8 +210,11 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
         }
 
         // 仍然没选，随便选个精一 50 以上的
+        // 選第一個叫隨機???
         for (const auto& info : oper_list) {
-            if (info.elite == 0 || (info.elite == 1 && info.level < 50)) {
+            // 精一就選了，不然也沒得選
+            if (info.elite < 1) {
+                // if (info.elite == 0 || (info.elite == 1 && info.level < 50)) {
                 continue;
             }
             Log.trace(__FUNCTION__, "| Choose random elite 1:", info.name, info.elite, info.level);
@@ -242,7 +251,13 @@ bool asst::RoguelikeRecruitTaskPlugin::_run()
         }
     }
 
-    return check_char(char_name, is_rtl);
+    bool check = check_char(char_name, is_rtl);
+    if (check) {
+        if (selected_oper->role >= BattleRole::Pioneer) {
+            melee_opers_cnt++;
+        }
+    }
+    return check;
 }
 
 bool asst::RoguelikeRecruitTaskPlugin::check_char(const std::string& char_name, bool is_rtl)

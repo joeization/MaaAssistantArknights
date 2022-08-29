@@ -63,6 +63,8 @@ namespace asst
         std::unordered_map<Point, std::string> m_used_tiles;
         std::unordered_map<std::string, int64_t> m_restore_status;
 
+        std::unordered_map<std::string, Point> m_used_opers;
+
         std::string m_stage_name;
     };
 }

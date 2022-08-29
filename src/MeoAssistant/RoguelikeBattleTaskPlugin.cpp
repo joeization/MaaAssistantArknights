@@ -232,6 +232,12 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
             if (!oper.cooling) {
                 not_cooling_count += 1;
             }
+            else {
+                if (m_used_opers.contains(oper.name)) {
+                    m_used_tiles.erase(m_used_opers[oper.name]);
+                    m_used_opers.erase(oper.name);
+                }
+            }
         }
         // 超过一半的人费用都没好，那就不下人
         if (available_count <= not_cooling_count / 2) {
@@ -253,6 +259,8 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
 
     // 一个人都没有的时候，先下个地面单位（如果有的话）
     // 第二个人下奶（如果有的话）
+    // 第三個再下奶，有練度的話應該沒那麼快死，尤其山的情況
+    // 人死到剩一個就不管了
     bool wait_melee = false;
     bool wait_medic = false;
     if (m_used_tiles.empty() || m_used_tiles.size() == 1) {
@@ -262,7 +270,7 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
                     wait_melee = true;
                 }
             }
-            else if (m_used_tiles.size() == 1 && m_homes.size() == 1) {
+            else if (m_used_tiles.size() == 2 && m_homes.size() == 1) {
                 if (op.role == BattleRole::Medic) {
                     wait_medic = true;
                 }
@@ -333,6 +341,7 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
     m_ctrler->swipe(placed_point, end_point, swipe_oper_task_ptr->rear_delay, true, 100);
 
     m_used_tiles.emplace(placed_loc, oper_name);
+    m_used_opers.emplace(oper_name, placed_loc);
     m_opers_used = true;
     ++m_cur_home_index;
 
@@ -391,6 +400,7 @@ void asst::RoguelikeBattleTaskPlugin::clear()
     m_stage_name.clear();
     m_side_tile_info.clear();
     m_used_tiles.clear();
+    m_used_opers.clear();
     m_kills = 0;
     m_total_kills = 0;
 
@@ -629,6 +639,9 @@ asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::cal
         int extra_dist_score = DistWeights * extra_dist;
         if (oper.role == BattleRole::Medic) { // 医疗干员离得远无所谓
             extra_dist_score = 0;
+        }
+        if (oper.role == BattleRole::Sniper || oper.role == BattleRole::Caster) { // 遠程放遠點無所謂
+            extra_dist_score /= 2;
         }
 
         if (cur_result.second + extra_dist_score > max_score) {

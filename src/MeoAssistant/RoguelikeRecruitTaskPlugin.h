@@ -9,6 +9,7 @@ namespace asst
     struct RoguelikeRecruitInfo
     {
         std::string name;          // 干员名字
+        BattleRole role;
         int priority = 0;          // 招募优先级 (0-1000)
         int page_index = 0;        // 所在页码 (用于判断翻页方向)
         bool is_alternate = false; // 是否后备干员 (允许重复招募、划到后备干员时不再往右划动)
@@ -29,6 +30,7 @@ namespace asst
         void slowly_swipe(ProcessTaskAction action);
 
     private:
+        int melee_opers_cnt = 0;
         bool check_core_char();
         // 招募指定干员
         //
